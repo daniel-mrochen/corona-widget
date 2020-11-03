@@ -4,6 +4,9 @@
 // Licence: Robert Koch-Institut (RKI), dl-de/by-2-0
 // BASE VERSION FORKED FROM AUTHOR: kevinkub https://gist.github.com/kevinkub/46caebfebc7e26be63403a7f0587f664
 // UPDATED VERSION BY AUTHOR: rphl https://github.com/rphl/corona-widget/
+// DM - Version: 2.4
+// Setting SI fix: 0,50.883331,8.016667
+// Setting SI + AK: 0,50.883331,8.016667;1,50.687222,7.645556
 
 // ============= KONFIGURATION =============
 
@@ -11,7 +14,7 @@ const CONFIG_OPEN_URL = false
 
 // ============= ============= =============
 
-const outputFields = 'GEN,cases,cases_per_100k,cases7_per_100k,cases7_bl_per_100k,last_update,BL,RS';
+const outputFields = 'GEN,cases,cases_per_100k,cases7_per_100k,cases7_bl_per_100k,last_update,BL,RS,EWZ';
 const apiUrl = (location) => `https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_Landkreisdaten/FeatureServer/0/query?where=1%3D1&outFields=${outputFields}&geometry=${location.longitude.toFixed(3)}%2C${location.latitude.toFixed(3)}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=4326&f=json`
 const outputFieldsStates = 'Fallzahl,LAN_ew_GEN,cases7_bl_per_100k';
 const apiUrlStates = `https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/Coronaf%E4lle_in_den_Bundesl%E4ndern/FeatureServer/0/query?where=1%3D1&outFields=${outputFieldsStates}&returnGeometry=false&outSR=4326&f=json`
@@ -89,16 +92,26 @@ async function createWidget() {
     const headerRow = addHeaderRowTo(list)
     const data = await getData(0)
     if (data) {
-        headerRow.addSpacer(3)
+        //headerRow.addSpacer(3)
+        
         let todayData = getDataForDate(data)
         addLabelTo(headerRow, 'R ' + formatNumber(todayData.r), Font.mediumSystemFont(14))
+
+        if (MEDIUMWIDGET) {
+            addLabelTo(headerRow, ' ('+todayData.updated.substr(0, 6)+')', Font.mediumSystemFont(14), Color.gray())
+        }
+
         headerRow.addSpacer()
+        
+
+        todayData.updated.substr(0, 10)
     
         let chartdata = getChartData(data, 'averageIncidence');
         // chartdata = [4,13,25,31,45,55,60] // DEMO!!!
         addChartBlockTo(headerRow, getGetLastCasesAndTrend(data, 'cases'), chartdata, false)
         
-        list.addSpacer(3)
+        //list.addSpacer(3)
+        list.addSpacer(1)
 
         const incidenceRow = list.addStack()
         incidenceRow.layoutHorizontally()
@@ -213,13 +226,14 @@ function addIncidence(view, data, useStaticCoordsIndex = false) {
     stackMainRowBox.layoutVertically()
     stackMainRowBox.addSpacer(0)
 
-    if (useStaticCoordsIndex === 0) {
-        const dateStr = todayData.updated.substr(0, 10)
-        addLabelTo(stackMainRowBox, dateStr, Font.mediumSystemFont(10), new Color('888888'))
-        stackMainRowBox.addSpacer(0)
-    } else {
-        stackMainRowBox.addSpacer(10)
-    }
+    // if (useStaticCoordsIndex === 0) {
+    //     const dateStr = todayData.updated.substr(0, 10)
+    //     addLabelTo(stackMainRowBox, dateStr, Font.mediumSystemFont(10), new Color('888888'))
+    //     stackMainRowBox.addSpacer(0)
+    // } else {
+    //     stackMainRowBox.addSpacer(10)
+    // }
+
     const stackMainRow = stackMainRowBox.addStack()
     stackMainRow.centerAlignContent()
 
@@ -255,8 +269,25 @@ function addIncidence(view, data, useStaticCoordsIndex = false) {
     }
     // @TODO WORKAROUND FÜR DIE STACKBREITE ENTFERNEN
     areaName = areaName.toUpperCase().padEnd(50, ' ')
-    const areanameLabel = addLabelTo(stackMainRowBox, areaName, Font.mediumSystemFont(14))
+    //const areanameLabel = addLabelTo(stackMainRowBox, areaName, Font.mediumSystemFont(14))
+    const areanameLabel = addLabelTo(stackMainRowBox, areaName, Font.mediumSystemFont(10))
     areanameLabel.lineLimit = 1
+
+    let pers_cases = (todayData.incidence * todayData.ewzFaktor)
+    let pers_prozent = 100 / todayData.ewz * pers_cases
+    let diff_50 = 50 - todayData.incidence
+    let diff_50_result = diff_50 * todayData.ewzFaktor
+
+    const detailLabel = stackMainRowBox.addText(pers_cases.toFixed(0) + "/" + (pers_cases / 7).toFixed(0) + " Pers. 7/1 (" + (todayData.ewz / 1000000).toFixed(3) + " Mio.)")
+    detailLabel.font = Font.mediumSystemFont(8)
+    detailLabel.lineLimit = 2
+    detailLabel.textColor = new Color('999999')
+
+    const detailLabel2 = stackMainRowBox.addText(diff_50_result.toFixed(0) + " bis 50=" + (50*todayData.ewzFaktor).toFixed(0) + " (" + pers_prozent.toFixed(2) + "%/Ew)")
+    detailLabel2.font = Font.mediumSystemFont(8)
+    detailLabel2.lineLimit = 2
+    detailLabel2.textColor = new Color('999999')
+
     stackMainRowBox.addSpacer(0)
 }
 
@@ -370,6 +401,8 @@ async function getData(useStaticCoordsIndex = false) {
             incidenceBL: parseFloat(attr.cases7_bl_per_100k.toFixed(1)),
             areaName: attr.GEN,
             areaCases: parseFloat(attr.cases.toFixed(1)),
+            ewz: attr.EWZ.toFixed(0),
+            ewzFaktor: attr.EWZ.toFixed(0) / 100000,
             nameBL: BUNDESLAENDER_SHORT[attr.BL],
             shouldCache: true,
             updated: attr.last_update,

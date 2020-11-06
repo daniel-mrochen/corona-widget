@@ -4,7 +4,7 @@
 // Licence: Robert Koch-Institut (RKI), dl-de/by-2-0
 // BASE VERSION FORKED FROM AUTHOR: kevinkub https://gist.github.com/kevinkub/46caebfebc7e26be63403a7f0587f664
 // UPDATED VERSION BY AUTHOR: rphl https://github.com/rphl/corona-widget/
-// DM - Version: 2.4
+// DM - Version: 2.5
 // Setting SI fix: 0,50.883331,8.016667
 // Setting SI + AK: 0,50.883331,8.016667;1,50.687222,7.645556
 
@@ -102,10 +102,7 @@ async function createWidget() {
         }
 
         headerRow.addSpacer()
-        
-
-        todayData.updated.substr(0, 10)
-    
+            
         let chartdata = getChartData(data, 'averageIncidence');
         // chartdata = [4,13,25,31,45,55,60] // DEMO!!!
         addChartBlockTo(headerRow, getGetLastCasesAndTrend(data, 'cases'), chartdata, false)
